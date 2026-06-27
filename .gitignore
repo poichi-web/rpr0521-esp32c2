@@ -1,0 +1,13 @@
+# Firmware binary (large, download from micropython.org)
+ESP32_GENERIC_C2-*.bin
+
+# Data logs (device-local)
+log.csv
+*.txt
+
+# Arduino/PlatformIO build artifacts
+.pio/
+sketch/
+src/
+
+# platformio.ini kept for reference but builds won't work
