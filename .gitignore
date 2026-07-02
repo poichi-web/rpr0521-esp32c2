@@ -1,9 +1,9 @@
 # Firmware binary (large, download from micropython.org)
 ESP32_GENERIC_C2-*.bin
 
-# Data logs (device-local)
-log.csv
+# Data logs
 *.txt
+# log.csv is tracked: weekly cloud routine reads it from GitHub for Notion updates (see sync_log.py)
 
 # Arduino/PlatformIO build artifacts
 .pio/
