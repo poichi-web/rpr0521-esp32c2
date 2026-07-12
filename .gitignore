@@ -10,4 +10,7 @@ ESP32_GENERIC_C2-*.bin
 sketch/
 src/
 
+# Device WiFi credentials (local + on-device only, never pushed to GitHub)
+wifi_secrets.py
+
 # platformio.ini kept for reference but builds won't work

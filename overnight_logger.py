@@ -32,11 +32,39 @@ def to_lux(als0, als1):
         lux = cf * 0.766 * als0
     return max(0.0, lux)
 
-# RTC: 起動のたびに上書きしない（電源断以外のリセットで時刻が過去に巻き戻るバグを回避）
-# 電源断でRTCが失われた場合のみ、下の日時で初期化する
 rtc = machine.RTC()
-if rtc.datetime()[0] < 2026:
-    rtc.datetime((2026, 7, 2, 3, 22, 3, 0, 0))  # 電源断復旧時のフォールバック
+
+def try_ntp_sync(timeout_s=15):
+    try:
+        import network, ntptime, wifi_secrets
+        wlan = network.WLAN(network.STA_IF)
+        wlan.active(True)
+        if not wlan.isconnected():
+            wlan.connect(wifi_secrets.SSID, wifi_secrets.PASSWORD)
+            t0 = time.ticks_ms()
+            while not wlan.isconnected():
+                if time.ticks_diff(time.ticks_ms(), t0) > timeout_s * 1000:
+                    sys.stdout.write("WiFi connect timeout\r\n")
+                    return False
+                time.sleep_ms(200)
+        ntptime.host = "ntp.nict.jp"  # pool.ntp.org timed out on this network; NICT (JP) is reliable
+        ntptime.settime()  # sets RTC to UTC
+        # shift to JST (+9h) so timestamps stay consistent with existing log entries
+        epoch_jst = time.time() + 9 * 3600
+        tm = time.localtime(epoch_jst)  # (year, month, mday, hour, minute, second, weekday, yearday)
+        rtc.datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+        return True
+    except Exception as e:
+        sys.stdout.write("NTP sync failed: {}\r\n".format(e))
+        return False
+
+ntp_ok = try_ntp_sync()
+sys.stdout.write("NTP sync: {}\r\n".format("OK" if ntp_ok else "FAILED"))
+
+# 電源断以外のリセットで時刻が過去に巻き戻るバグを回避しつつ、
+# WiFi/NTPが使えない場合のみ最終手段としてこの日時で初期化する
+if not ntp_ok and rtc.datetime()[0] < 2026:
+    rtc.datetime((2026, 7, 2, 3, 22, 3, 0, 0))  # WiFi不通時のフォールバック
 
 # センサー初期化
 wreg(0x40, 0xC0)
