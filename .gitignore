@@ -12,5 +12,6 @@ src/
 
 # Device WiFi credentials (local + on-device only, never pushed to GitHub)
 wifi_secrets.py
+ingest_secrets.py
 
 # platformio.ini kept for reference but builds won't work

@@ -1,4 +1,4 @@
-import machine, time, sys, os
+import machine, time, sys, os, ujson
 
 i2c = machine.I2C(0, sda=machine.Pin(5), scl=machine.Pin(6), freq=100000)
 ADDR = 0x38
@@ -73,6 +73,20 @@ wreg(0x41, 0xE6)
 wreg(0x42, 0x03)
 time.sleep_ms(200)
 
+def post_to_cloud(ts, lux, ps, als0, als1):
+    # ベストエフォート送信。失敗してもローカルログは既に書き込み済みなのでデータは失われない
+    try:
+        import urequests, ingest_secrets
+        payload = ujson.dumps({"time": ts, "lux": lux, "ps": ps, "als0": als0, "als1": als1})
+        r = urequests.post(
+            ingest_secrets.INGEST_URL,
+            data=payload,
+            headers={"X-Ingest-Token": ingest_secrets.INGEST_TOKEN, "Content-Type": "application/json"},
+        )
+        r.close()
+    except Exception as e:
+        sys.stdout.write("cloud post failed: {}\r\n".format(e))
+
 LOG_FILE = '/log.csv'
 INTERVAL_S = 3600  # 1時間ごと
 
@@ -107,6 +121,7 @@ while True:
         f.write(line)
 
     sys.stdout.write(line)
+    post_to_cloud(ts, lux, ps, als0, als1)
 
     next_tick = time.ticks_add(next_tick, INTERVAL_S * 1000)
     wait = time.ticks_diff(next_tick, time.ticks_ms())
